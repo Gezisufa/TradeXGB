@@ -1,0 +1,12 @@
+data/btc_daily.csv
+results/*.png
+results/metrics.json
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+.env
+venv/
+.venv/
+*.egg-info/
+dist/
