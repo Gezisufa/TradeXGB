@@ -185,5 +185,5 @@ tradeXGB/
 
 ## Author
 
-Sergei Andrievski — Process Engineer → ML Engineer / Fintech ML
+Serhii Andriievskyi 
 PhD candidate, CTU Prague

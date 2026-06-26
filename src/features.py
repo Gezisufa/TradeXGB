@@ -62,9 +62,9 @@ def build_features(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.Series]:
     out[f"atr_{ATR_PERIOD}"] = ta.atr(out["High"], out["Low"], out["Close"], length=ATR_PERIOD)
 
     bb = ta.bbands(out["Close"], length=BB_PERIOD, std=BB_STD)
-    upper_col = f"BBU_{BB_PERIOD}_{float(BB_STD)}"
-    lower_col = f"BBL_{BB_PERIOD}_{float(BB_STD)}"
-    mid_col = f"BBM_{BB_PERIOD}_{float(BB_STD)}"
+    upper_col = next(c for c in bb.columns if c.startswith("BBU"))
+    lower_col = next(c for c in bb.columns if c.startswith("BBL"))
+    mid_col = next(c for c in bb.columns if c.startswith("BBM"))
     out["bb_width"] = (bb[upper_col] - bb[lower_col]) / bb[mid_col]
 
     # ── volume ──────────────────────────────────────────────────────────────
