@@ -21,16 +21,7 @@ def download_btc(
     save_path: Path | str = DEFAULT_SAVE_PATH,
     force_reload: bool = False,
 ) -> pd.DataFrame:
-    """Download BTC-USD daily OHLCV data and cache it to CSV.
-
-    Args:
-        period: yfinance period string, e.g. "5y", "3y", "max".
-        save_path: Where to persist the CSV cache.
-        force_reload: Re-download even if cache exists.
-
-    Returns:
-        DataFrame with columns [Open, High, Low, Close, Volume] indexed by Date.
-    """
+    """Download BTC-USD daily OHLCV from Yahoo Finance and cache to CSV."""
     save_path = Path(save_path)
 
     if save_path.exists() and not force_reload:
@@ -70,7 +61,6 @@ def download_btc(
 
 
 def load_btc(save_path: Path | str = DEFAULT_SAVE_PATH) -> pd.DataFrame:
-    """Load BTC data from cache, downloading if the file doesn't exist."""
     return download_btc(save_path=save_path, force_reload=False)
 
 

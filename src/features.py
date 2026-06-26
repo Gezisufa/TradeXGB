@@ -7,9 +7,6 @@ The target is computed look-ahead by one bar, so the last row is always dropped.
 from __future__ import annotations
 
 import logging
-from typing import Tuple
-
-import numpy as np
 import pandas as pd
 import pandas_ta as ta
 
@@ -29,20 +26,14 @@ BB_PERIOD = 20
 BB_STD = 2
 
 
-def build_features(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.Series]:
-    """Compute technical indicators and construct the classification target.
+def build_features(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
+    """Compute technical indicators and the next-day direction target.
 
-    Args:
-        df: Raw OHLCV DataFrame with a DatetimeIndex and columns
-            [Open, High, Low, Close, Volume].
-
-    Returns:
-        X: Feature DataFrame, shape (n_samples, n_features).
-        y: Binary target Series (1 = next day close higher, 0 = not).
+    All features use only data available at time t (no look-ahead).
+    Target: 1 if close[t+1] > close[t], else 0 — set via shift(-1).
     """
     out = df[["Open", "High", "Low", "Close", "Volume"]].copy()
 
-    # ── trend ───────────────────────────────────────────────────────────────
     out[f"ema_{EMA_FAST}"] = ta.ema(out["Close"], length=EMA_FAST)
     out[f"ema_{EMA_SLOW}"] = ta.ema(out["Close"], length=EMA_SLOW)
 
@@ -51,14 +42,12 @@ def build_features(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.Series]:
     out["macd_signal"] = macd[f"MACDs_{MACD_FAST}_{MACD_SLOW}_{MACD_SIGNAL}"]
     out["macd_hist"] = macd[f"MACDh_{MACD_FAST}_{MACD_SLOW}_{MACD_SIGNAL}"]
 
-    # ── momentum ────────────────────────────────────────────────────────────
     out[f"rsi_{RSI_PERIOD}"] = ta.rsi(out["Close"], length=RSI_PERIOD)
 
     stoch = ta.stoch(out["High"], out["Low"], out["Close"], k=STOCH_K, d=STOCH_D)
     out["stoch_k"] = stoch[f"STOCHk_{STOCH_K}_{STOCH_D}_3"]
     out["stoch_d"] = stoch[f"STOCHd_{STOCH_K}_{STOCH_D}_3"]
 
-    # ── volatility ──────────────────────────────────────────────────────────
     out[f"atr_{ATR_PERIOD}"] = ta.atr(out["High"], out["Low"], out["Close"], length=ATR_PERIOD)
 
     bb = ta.bbands(out["Close"], length=BB_PERIOD, std=BB_STD)
@@ -67,15 +56,13 @@ def build_features(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.Series]:
     mid_col = next(c for c in bb.columns if c.startswith("BBM"))
     out["bb_width"] = (bb[upper_col] - bb[lower_col]) / bb[mid_col]
 
-    # ── volume ──────────────────────────────────────────────────────────────
     out["obv"] = ta.obv(out["Close"], out["Volume"])
     out["volume_pct_change"] = out["Volume"].pct_change()
 
-    # ── lagged returns ──────────────────────────────────────────────────────
     for lag in (1, 3, 5):
         out[f"ret_{lag}d"] = out["Close"].pct_change(lag)
 
-    # ── target: 1 if close[t+1] > close[t] ─────────────────────────────────
+    # shift(-1): label at t is the direction of t+1 — the last row has no label
     out["target"] = (out["Close"].shift(-1) > out["Close"]).astype(int)
 
     # Drop the last row (no label) and any NaN rows from indicator warm-up
@@ -96,17 +83,8 @@ def chronological_split(
     X: pd.DataFrame,
     y: pd.Series,
     train_ratio: float = 0.80,
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
-    """Split features and target into train/test sets respecting time order.
-
-    Args:
-        X: Feature DataFrame.
-        y: Target Series.
-        train_ratio: Fraction of data allocated to training.
-
-    Returns:
-        X_train, X_test, y_train, y_test
-    """
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
+    """Split X and y chronologically (no shuffling) into train and test sets."""
     split_idx = int(len(X) * train_ratio)
     X_train, X_test = X.iloc[:split_idx], X.iloc[split_idx:]
     y_train, y_test = y.iloc[:split_idx], y.iloc[split_idx:]

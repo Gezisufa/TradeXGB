@@ -10,7 +10,6 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -55,16 +54,7 @@ def train(
     y_train: pd.Series,
     params: dict | None = None,
 ) -> XGBClassifier:
-    """Fit an XGBClassifier on the training split.
-
-    Args:
-        X_train: Training features.
-        y_train: Binary training labels.
-        params: Override for XGBOOST_PARAMS.
-
-    Returns:
-        Fitted XGBClassifier.
-    """
+    """Fit an XGBClassifier, optionally overriding XGBOOST_PARAMS."""
     effective_params = {**XGBOOST_PARAMS, **(params or {})}
     clf = XGBClassifier(**effective_params)
     clf.fit(X_train, y_train, verbose=False)
@@ -76,17 +66,8 @@ def evaluate(
     clf: XGBClassifier,
     X_test: pd.DataFrame,
     y_test: pd.Series,
-) -> Dict[str, float]:
-    """Compute classification metrics and baseline comparisons on the test set.
-
-    Args:
-        clf: Fitted classifier.
-        X_test: Test features.
-        y_test: True binary labels.
-
-    Returns:
-        Dictionary of metric names → values.
-    """
+) -> dict[str, float]:
+    """Compute classification metrics and baseline comparisons on the test set."""
     y_pred = clf.predict(X_test)
     y_prob = clf.predict_proba(X_test)[:, 1]
 
@@ -96,11 +77,10 @@ def evaluate(
     f1 = f1_score(y_test, y_pred, zero_division=0)
     auc = roc_auc_score(y_test, y_prob)
 
-    # Baselines
-    always_up_acc = y_test.mean()          # fraction of actual "up" days
+    always_up_acc = y_test.mean()  # fraction of actual "up" days — the naive baseline
     random_acc = 0.5
 
-    metrics: Dict[str, float] = {
+    metrics: dict[str, float] = {
         "accuracy": round(acc, 4),
         "precision": round(prec, 4),
         "recall": round(rec, 4),
@@ -137,13 +117,7 @@ def plot_feature_importance(
     feature_names: list[str],
     top_n: int = 20,
 ) -> None:
-    """Save a bar chart of XGBoost gain-based feature importances.
-
-    Args:
-        clf: Fitted XGBClassifier.
-        feature_names: Ordered list of feature names matching training columns.
-        top_n: How many top features to display.
-    """
+    """Save a horizontal bar chart of XGBoost gain-based feature importances."""
     importance = pd.Series(clf.feature_importances_, index=feature_names)
     importance = importance.nlargest(top_n).sort_values()
 
@@ -158,13 +132,8 @@ def plot_feature_importance(
     logger.info("Feature importance plot saved.")
 
 
-def save_metrics(metrics: Dict[str, float], path: Path | str | None = None) -> None:
-    """Persist metrics dict to JSON.
-
-    Args:
-        metrics: Dictionary of metric names → values.
-        path: Output path; defaults to results/metrics.json.
-    """
+def save_metrics(metrics: dict[str, float], path: Path | str | None = None) -> None:
+    """Persist metrics dict to results/metrics.json (or a custom path)."""
     out_path = Path(path) if path else RESULTS_DIR / "metrics.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, "w") as f:

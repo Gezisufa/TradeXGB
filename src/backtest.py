@@ -13,7 +13,6 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -33,19 +32,11 @@ def run_backtest(
     close: pd.Series,
     predictions: np.ndarray | pd.Series,
     initial_capital: float = 10_000.0,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """Run a vectorised long/flat backtest and return performance metrics.
 
-    Predictions are treated as signals for the *following* day:
-    if predictions[t] == 1 the strategy holds during day t+1.
-
-    Args:
-        close: Close price series for the test period (DatetimeIndex).
-        predictions: Binary array aligned with ``close``.
-        initial_capital: Starting portfolio value in USD.
-
-    Returns:
-        Dictionary of backtest metrics; equity curves are saved as a side-effect.
+    predictions[t] == 1 means hold BTC during day t+1 (signal for the *next* bar).
+    Equity curves are saved to results/ as a side-effect.
     """
     close = close.copy()
     preds = pd.Series(np.asarray(predictions), index=close.index)
@@ -73,11 +64,11 @@ def run_backtest(
     return metrics
 
 
-def _compute_metrics(returns: pd.Series, equity: pd.Series, label: str) -> Dict[str, float]:
+def _compute_metrics(returns: pd.Series, equity: pd.Series, label: str) -> dict[str, float]:
     total_return = float(equity.iloc[-1] / equity.iloc[0] - 1)
     ann_return = float((1 + total_return) ** (TRADING_DAYS_PER_YEAR / len(returns)) - 1)
 
-    excess = returns - 0.0  # risk-free rate assumed 0 for simplicity
+    excess = returns  # risk-free rate = 0 (standard for crypto)
     sharpe = (
         float(excess.mean() / excess.std() * np.sqrt(TRADING_DAYS_PER_YEAR))
         if excess.std() > 0 else 0.0
@@ -125,7 +116,7 @@ def _plot_equity_curves(strategy: pd.Series, bh: pd.Series) -> None:
     logger.info("Equity curve saved to results/equity_curve.png")
 
 
-def _print_comparison(metrics: Dict) -> None:
+def _print_comparison(metrics: dict) -> None:
     print("\n── Backtest Results ────────────────────────────────────────")
     for label, m in metrics.items():
         print(f"\n  {label.replace('_', ' ').title()}")
@@ -138,15 +129,10 @@ def _print_comparison(metrics: Dict) -> None:
 
 
 def save_backtest_metrics(
-    metrics: Dict,
+    metrics: dict,
     existing_path: Path | str | None = None,
 ) -> None:
-    """Merge backtest metrics into the existing metrics.json file.
-
-    Args:
-        metrics: Backtest metrics dict (strategy + buy_and_hold keys).
-        existing_path: Path to metrics.json; defaults to results/metrics.json.
-    """
+    """Merge backtest metrics into results/metrics.json under the 'backtest' key."""
     path = Path(existing_path) if existing_path else RESULTS_DIR / "metrics.json"
     existing: dict = {}
     if path.exists():
