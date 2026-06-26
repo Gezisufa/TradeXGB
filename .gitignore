@@ -1,5 +1,5 @@
 # data/btc_daily.csv
-results/*.png
+# results/*.png
 # results/metrics.json
 __pycache__/
 *.pyc
